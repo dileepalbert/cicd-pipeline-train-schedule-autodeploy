@@ -30,8 +30,7 @@ pipeline {
         }        
         stage('Deploy') {
             steps {
-                withKubeConfig([credentialsId: 'jenkins-deploy', serverUrl: 'https://172.31.6.52:6443']) {
-                 sh 'kubectl apply -f train-schedule-service.yml'
+                withKubeConfig([credentialsId: 'jenkins-deploy', serverUrl: 'https://172.31.6.52:6443']) 
                  sh 'kubectl apply -f train-schedule-deployment.yml'
                 }
             }
