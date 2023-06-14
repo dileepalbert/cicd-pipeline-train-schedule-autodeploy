@@ -1,7 +1,6 @@
 pipeline {
     agent any
     environment {
-        //be sure to replace "albertdi" with your own Docker Hub username
         DOCKER_IMAGE_NAME = "albertdi/train-schedule"
     }
     stages {
@@ -12,23 +11,14 @@ pipeline {
                 archiveArtifacts artifacts: 'dist/trainSchedule.zip'
             }
         }
-        stage('Build Docker Image') {
-            when {
-                branch 'master'
-            }
+        stage('Docker Build') {
             steps {
                 script {
                     app = docker.build(DOCKER_IMAGE_NAME)
-                    app.inside {
-                        sh 'echo Hello, World!'
-                    }
                 }
             }
         }
-        stage('Push Docker Image') {
-            when {
-                branch 'master'
-            }
+        stage('Docker Push') {
             steps {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker_hub_login') {
@@ -37,42 +27,13 @@ pipeline {
                     }
                 }
             }
-        }
-        stage('CanaryDeploy') {
-            when {
-                branch 'master'
-            }
-            environment { 
-                CANARY_REPLICAS = 1
-            }
+        }        
+        stage('Deploy') {
             steps {
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'train-schedule-kube-canary.yml',
-                    enableConfigSubstitution: true
-                )
-            }
-        }
-        stage('DeployToProduction') {
-            when {
-                branch 'master'
-            }
-            environment { 
-                CANARY_REPLICAS = 0
-            }
-            steps {
-                input 'Deploy to Production?'
-                milestone(1)
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'train-schedule-kube-canary.yml',
-                    enableConfigSubstitution: true
-                )
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'train-schedule-kube.yml',
-                    enableConfigSubstitution: true
-                )
+                withKubeConfig([credentialsId: 'jenkins-deploy', serverUrl: 'https://172.31.6.52:6443']) {
+                 sh 'kubectl apply -f train-schedule-service.yml'
+                 sh 'kubectl apply -f train-schedule-deployment.yml'
+                }
             }
         }
     }
