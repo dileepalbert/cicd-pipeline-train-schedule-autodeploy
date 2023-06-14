@@ -77,3 +77,18 @@ pipeline {
         }
     }
 }
+node {   
+    stage('Clone') {
+        git credentialsId: 'git', url: 'https://github.com/'
+    }
+    
+    stage('Build image') {
+       dockerImage = docker.build("albertdi/my-react-app:latest")
+    }
+    
+ stage('Push image') {
+        withDockerRegistry([ credentialsId: "dockerhubaccount", url: "" ]) {
+        dockerImage.push()
+        }
+    }    
+}
